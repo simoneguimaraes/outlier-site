@@ -210,7 +210,7 @@ export async function POST(request: Request) {
       await supabase.from('session_outputs').update({ status: 'transcribing' }).eq('id', outputId)
 
       const b2Object = await s3.send(new GetObjectCommand({
-        Bucket: process.env.B2_BUCKET_NAME!,
+        Bucket: process.env.B2_BUCKET_NAME?.trim()!,
         Key: output.audio_file_path,
       }))
 
