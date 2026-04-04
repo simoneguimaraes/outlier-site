@@ -18,8 +18,10 @@ export default function SessionReview(props: Props) {
         // Format as plain text for clipboard
         const note = JSON.parse(summaryText)
         const clean = (s: string) => (s ?? '').replace(/\s*⭐+/g, '').trim()
-        const text = [
-          `META DA SESSÃO\n${clean(note.meta_da_sessao)}`,
+        const sections = [
+          ...(note.perfil_biografico ? [`PERFIL BIOGRÁFICO\n${clean(note.perfil_biografico)}`] : []),
+          ...(note.trabalho_realizado ? [`TRABALHO REALIZADO NA SESSÃO\n${clean(note.trabalho_realizado)}`] : []),
+          ...(note.meta_da_sessao ? [`META DA SESSÃO\n${clean(note.meta_da_sessao)}`] : []),
           `DEMANDA\n${clean(note.demanda)}`,
           `HUMOR\n${clean(note.humor)}`,
           `COMPORTAMENTO\n${clean(note.comportamento)}`,
@@ -27,7 +29,8 @@ export default function SessionReview(props: Props) {
           `MOMENTOS SIGNIFICATIVOS\n${clean(note.momentos_significativos)}`,
           `TAREFAS / META DA PRÓXIMA SESSÃO\n${clean(note.tarefas)}`,
           `OBSERVAÇÕES\n${clean(note.observacoes)}`,
-        ].join('\n\n')
+        ]
+        const text = sections.join('\n\n')
         await navigator.clipboard.writeText(text)
         setCopied(true)
         setTimeout(() => setCopied(false), 2500)

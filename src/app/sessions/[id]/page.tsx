@@ -135,6 +135,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           <div className="space-y-4">
             {[
               ...(clinicalNote!.perfil_biografico ? [{ key: 'perfil_biografico', label: 'Perfil biográfico' }] : []),
+              ...(clinicalNote!.trabalho_realizado ? [{ key: 'trabalho_realizado', label: 'Trabalho realizado na sessão' }] : []),
               ...(clinicalNote!.meta_da_sessao ? [{ key: 'meta_da_sessao', label: 'Meta da sessão' }] : []),
               { key: 'demanda', label: 'Demanda' },
               { key: 'humor', label: 'Humor' },
@@ -143,7 +144,6 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
               { key: 'momentos_significativos', label: 'Momentos significativos' },
               { key: 'tarefas', label: 'Tarefas / Meta da próxima sessão' },
               { key: 'observacoes', label: 'Observações clínicas' },
-              ...(clinicalNote!.trabalho_realizado ? [{ key: 'trabalho_realizado', label: 'Trabalho realizado na sessão' }] : []),
             ].map(({ key, label }) => (
               <EditableCard
                 key={key}
