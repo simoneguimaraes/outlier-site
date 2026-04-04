@@ -13,7 +13,7 @@ const s3 = new S3Client({
   forcePathStyle: true,
 })
 
-export const maxDuration = 800 // 13 min — suporta sessões de até ~2h (limite máximo Vercel Pro)
+export const maxDuration = 300 // 5 min — limite máximo do plano Hobby (Pro suporta até 800s)
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY!
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
