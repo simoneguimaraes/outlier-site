@@ -139,6 +139,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Fetch accumulated biographical profile from most recent completed session
+  async function getPerfilAcumulado(): Promise<string> {
+    const { data } = await supabase
+      .from('sessions')
+      .select('session_outputs(summary_text, status)')
+      .eq('patient_id', sessionData.patient_id)
+      .eq('session_outputs.status', 'completed')
+      .order('session_date', { ascending: false })
+      .limit(10)
+
+    if (!data) return 'Primeira sessão — sem perfil anterior coletado.'
+
+    for (const session of data) {
+      const outputs = session.session_outputs as Array<{ summary_text: string | null; status: string }>
+      for (const output of outputs ?? []) {
+        if (output.summary_text) {
+          try {
+            const note = JSON.parse(output.summary_text)
+            if (note.perfil_biografico) return note.perfil_biografico
+          } catch {}
+        }
+      }
+    }
+
+    return 'Primeira sessão — sem perfil anterior coletado.'
+  }
+
   // Fetch patient history (last 5 sessions with completed outputs)
   async function getHistoricoPaciente(): Promise<string> {
     const { data } = await supabase
@@ -235,11 +262,18 @@ export async function POST(request: Request) {
     // Step 3: Generate clinical note
     await supabase.from('session_outputs').update({ status: 'summarizing' }).eq('id', outputId)
 
-    const historico = await getHistoricoPaciente()
-    let promptWithContext = prompt.prompt_text.replace('CONTEXTO_AQUI', historico)
-    // Fallback: if placeholder not in prompt, append history at the end
+    const [historico, perfilAcumulado] = await Promise.all([
+      getHistoricoPaciente(),
+      getPerfilAcumulado(),
+    ])
+    let promptWithContext = prompt.prompt_text
+      .replace('CONTEXTO_AQUI', historico)
+      .replace('PERFIL_ACUMULADO_AQUI', perfilAcumulado)
+    // Fallback: if placeholders not in prompt, append at the end
     if (promptWithContext === prompt.prompt_text) {
-      promptWithContext = prompt.prompt_text + '\n\n---HISTÓRICO DO PACIENTE (sessões anteriores)---\n' + historico
+      promptWithContext = prompt.prompt_text
+        + '\n\n---HISTÓRICO DO PACIENTE (sessões anteriores)---\n' + historico
+        + '\n\n---PERFIL BIOGRÁFICO ACUMULADO---\n' + perfilAcumulado
     }
     const summaryText = await generateClinicalNote(transcript, promptWithContext)
 
