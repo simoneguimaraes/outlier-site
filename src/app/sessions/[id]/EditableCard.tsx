@@ -28,16 +28,24 @@ export default function EditableCard({
   }
   const [text, setText] = useState(() => normalize(value))
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   async function handleSave() {
     setSaving(true)
-    await fetch('/api/update-session-note', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ outputId, field, value: text }),
-    })
-    setSaving(false)
-    setEditing(false)
+    setSaveError(false)
+    try {
+      const res = await fetch('/api/update-session-note', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outputId, field, value: text }),
+      })
+      if (!res.ok) throw new Error()
+      setEditing(false)
+    } catch {
+      setSaveError(true)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function handleCancel() {
@@ -72,6 +80,9 @@ export default function EditableCard({
             className="w-full text-sm text-gray-800 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#502878] resize-y"
             autoFocus
           />
+          {saveError && (
+            <p className="text-xs text-red-600">Erro ao salvar — tente novamente.</p>
+          )}
           <div className="flex gap-2">
             <button
               onClick={handleSave}

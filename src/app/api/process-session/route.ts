@@ -13,7 +13,7 @@ const s3 = new S3Client({
   forcePathStyle: true,
 })
 
-export const maxDuration = 300 // 5 min — suporta sessões de até ~2h
+export const maxDuration = 800 // 13 min — suporta sessões de até ~2h (limite máximo Vercel Pro)
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY!
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
@@ -243,7 +243,11 @@ export async function POST(request: Request) {
     await supabase.from('session_outputs').update({ status: 'summarizing' }).eq('id', outputId)
 
     const historico = await getHistoricoPaciente()
-    const promptWithContext = prompt.prompt_text.replace('CONTEXTO_AQUI', historico)
+    let promptWithContext = prompt.prompt_text.replace('CONTEXTO_AQUI', historico)
+    // Fallback: if placeholder not in prompt, append history at the end
+    if (promptWithContext === prompt.prompt_text) {
+      promptWithContext = prompt.prompt_text + '\n\n---HISTÓRICO DO PACIENTE (sessões anteriores)---\n' + historico
+    }
     const summaryText = await generateClinicalNote(transcript, promptWithContext)
 
     // Step 4: Save historico_resumido for future sessions
