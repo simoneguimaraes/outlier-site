@@ -15,12 +15,22 @@ export default function EditableCard({
 }) {
   const [editing, setEditing] = useState(false)
   const stripMarkers = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\s*⭐+/g, '').trim()
+  const normalizeItem = (item: unknown): string => {
+    if (typeof item === 'string') return stripMarkers(item)
+    if (item && typeof item === 'object') {
+      return Object.values(item as Record<string, unknown>)
+        .map(v => stripMarkers(String(v ?? '')))
+        .filter(Boolean)
+        .join(' | ')
+    }
+    return stripMarkers(String(item ?? ''))
+  }
   const normalize = (v: unknown): string => {
-    if (Array.isArray(v)) return (v as string[]).map((s) => stripMarkers(String(s))).join('\n')
+    if (Array.isArray(v)) return v.map(normalizeItem).join('\n')
     if (typeof v === 'string') {
       try {
         const parsed = JSON.parse(v)
-        if (Array.isArray(parsed)) return parsed.map((s: string) => stripMarkers(s)).join('\n')
+        if (Array.isArray(parsed)) return parsed.map(normalizeItem).join('\n')
       } catch {}
       return stripMarkers(v)
     }
