@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { NextResponse } from 'next/server'
 
 const s3 = new S3Client({
@@ -39,7 +40,7 @@ async function withRetry<T>(
   }
 }
 
-async function transcribeAudio(audioBuffer: ArrayBuffer, mimeType: string): Promise<{
+async function transcribeAudio(audioUrl: string): Promise<{
   transcript: string
   confidence: number
 }> {
@@ -48,9 +49,9 @@ async function transcribeAudio(audioBuffer: ArrayBuffer, mimeType: string): Prom
       method: 'POST',
       headers: {
         Authorization: `Token ${DEEPGRAM_API_KEY}`,
-        'Content-Type': mimeType,
+        'Content-Type': 'application/json',
       },
-      body: audioBuffer,
+      body: JSON.stringify({ url: audioUrl }),
     })
 
     if (!response.ok) {
@@ -206,28 +207,20 @@ export async function POST(request: Request) {
       transcript = output.transcript_text
       confidence = output.transcript_confidence ?? 0
     } else {
-      // Step 1: Download audio from B2
+      // Step 1: Generate presigned URL — Deepgram downloads directly from B2
       await supabase.from('session_outputs').update({ status: 'transcribing' }).eq('id', outputId)
 
-      const b2Object = await s3.send(new GetObjectCommand({
-        Bucket: process.env.B2_BUCKET_NAME?.trim()!,
-        Key: output.audio_file_path,
-      }))
-
-      if (!b2Object.Body) throw new Error('storage_permission_denied')
-
-      const audioBuffer = (await b2Object.Body.transformToByteArray()).buffer as ArrayBuffer
-      const ext = output.audio_file_path.split('.').pop() ?? 'mp3'
-      const mimeType = ext === 'mp4' ? 'video/mp4'
-        : ext === 'wav' ? 'audio/wav'
-        : ext === 'm4a' ? 'audio/mp4'
-        : ext === 'ogg' ? 'audio/ogg'
-        : ext === 'webm' ? 'audio/webm'
-        : ext === 'flac' ? 'audio/flac'
-        : 'audio/mpeg'
+      const audioUrl = await getSignedUrl(
+        s3,
+        new GetObjectCommand({
+          Bucket: process.env.B2_BUCKET_NAME?.trim()!,
+          Key: output.audio_file_path,
+        }),
+        { expiresIn: 3600 }
+      )
 
       // Step 2: Transcribe
-      const result = await transcribeAudio(audioBuffer, mimeType)
+      const result = await transcribeAudio(audioUrl)
       transcript = result.transcript
       confidence = result.confidence
 
